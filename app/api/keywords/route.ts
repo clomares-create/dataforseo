@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { hasCredentials, fetchRankedKeywords } from '@/lib/dataforseo'
+import { fetchRankedKeywords } from '@/lib/dataforseo'
 import { generateMockKeywords } from '@/lib/mockData'
 import { KeywordsRequest } from '@/lib/types'
+import { initDB, getDataForSEOCredentials } from '@/lib/turso'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,12 +13,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'No domains provided' }, { status: 400 })
     }
 
-    if (!hasCredentials()) {
+    await initDB()
+    const creds = await getDataForSEOCredentials()
+
+    if (!creds) {
       const result = generateMockKeywords(domains)
       return NextResponse.json({ success: true, ...result, isMock: true })
     }
 
-    const result = await fetchRankedKeywords(domains, locationCode)
+    const result = await fetchRankedKeywords(domains, locationCode, creds)
     return NextResponse.json({ success: true, ...result, isMock: false })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

@@ -2,30 +2,17 @@ import { DomainTrafficSeries, Keyword, DomainRankings, DOMAIN_COLORS } from './t
 
 const BASE_URL = 'https://api.dataforseo.com'
 
-function getAuthHeader(): string {
-  const login = process.env.DATAFORSEO_LOGIN
-  const password = process.env.DATAFORSEO_PASSWORD
-  if (!login || !password) throw new Error('DataForSEO credentials not configured')
-  return 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64')
+export interface Credentials { login: string; password: string }
+
+function getAuthHeader(creds: Credentials): string {
+  return 'Basic ' + Buffer.from(`${creds.login}:${creds.password}`).toString('base64')
 }
 
-export function hasCredentials(): boolean {
-  const login = process.env.DATAFORSEO_LOGIN
-  const password = process.env.DATAFORSEO_PASSWORD
-  return !!(
-    login && password &&
-    login !== 'your_login_here' &&
-    password !== 'your_password_here' &&
-    login.trim() !== '' &&
-    password.trim() !== ''
-  )
-}
-
-async function callApi(endpoint: string, body: unknown): Promise<unknown> {
+async function callApi(endpoint: string, body: unknown, creds: Credentials): Promise<unknown> {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: {
-      'Authorization': getAuthHeader(),
+      'Authorization': getAuthHeader(creds),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -41,7 +28,8 @@ export async function fetchDomainTraffic(
   domains: string[],
   locationCode: number,
   dateFrom: string,
-  dateTo: string
+  dateTo: string,
+  creds: Credentials
 ): Promise<DomainTrafficSeries[]> {
   // domain_analytics/overview/live returns monthly organic traffic data
   const tasks = domains.map(domain => ({
@@ -51,7 +39,7 @@ export async function fetchDomainTraffic(
     date_to: dateTo,
   }))
 
-  const result = await callApi('/v3/domain_analytics/overview/live', tasks) as {
+  const result = await callApi('/v3/domain_analytics/overview/live', tasks, creds) as {
     tasks: Array<{
       result: Array<{
         target: string
@@ -97,7 +85,8 @@ export async function fetchDomainTraffic(
 
 export async function fetchRankedKeywords(
   domains: string[],
-  locationCode: number
+  locationCode: number,
+  creds: Credentials
 ): Promise<{ commonKeywords: Keyword[]; rankings: DomainRankings[] }> {
   // Fetch ranked keywords for each domain
   const tasks = domains.map(domain => ({
@@ -107,7 +96,7 @@ export async function fetchRankedKeywords(
     limit: 100,
   }))
 
-  const result = await callApi('/v3/dataforseo_labs/google/ranked_keywords/live', tasks) as {
+  const result = await callApi('/v3/dataforseo_labs/google/ranked_keywords/live', tasks, creds) as {
     tasks: Array<{
       result: Array<{
         items?: Array<{

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { hasCredentials, fetchDomainTraffic } from '@/lib/dataforseo'
+import { fetchDomainTraffic } from '@/lib/dataforseo'
 import { generateMockTrafficData } from '@/lib/mockData'
 import { AnalyticsRequest } from '@/lib/types'
+import { initDB, getDataForSEOCredentials } from '@/lib/turso'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,13 +13,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'No domains provided' }, { status: 400 })
     }
 
-    if (!hasCredentials()) {
-      // Return mock data
+    await initDB()
+    const creds = await getDataForSEOCredentials()
+
+    if (!creds) {
       const data = generateMockTrafficData(domains)
       return NextResponse.json({ success: true, data, isMock: true })
     }
 
-    const data = await fetchDomainTraffic(domains, locationCode, dateFrom, dateTo)
+    const data = await fetchDomainTraffic(domains, locationCode, dateFrom, dateTo, creds)
     return NextResponse.json({ success: true, data, isMock: false })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
