@@ -40,12 +40,11 @@ export async function fetchDomainTraffic(
     date_to: dateTo,
   }))
 
-  const result = await callApi('/v3/dataforseo_labs/google/domain_rank_overview/live', tasks, creds) as {
+  const result = await callApi('/v3/dataforseo_labs/google/historical_rank_overview/live', tasks, creds) as {
     tasks: Array<{
       result: Array<{
         items?: Array<{
           date: string
-          domain: string
           metrics: {
             organic?: { etv?: number }
           }
@@ -58,9 +57,9 @@ export async function fetchDomainTraffic(
     const items = result.tasks?.[idx]?.result?.[0]?.items ?? []
 
     const data = items.map((item) => ({
-      month: item.date.slice(0, 7), // "YYYY-MM"
+      month: (item.date ?? '').slice(0, 7), // "YYYY-MM"
       visits: Math.round(item.metrics?.organic?.etv ?? 0),
-    })).sort((a, b) => a.month.localeCompare(b.month))
+    })).filter(d => d.month).sort((a, b) => a.month.localeCompare(b.month))
 
     const currentTraffic = data[data.length - 1]?.visits ?? 0
 
