@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [cacheCount, setCacheCount] = useState<number | null>(null);
+  const [clearingCache, setClearingCache] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -21,6 +23,11 @@ export default function SettingsPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    fetch("/api/cache")
+      .then((r) => r.json())
+      .then((d) => setCacheCount(d.count ?? 0))
+      .catch(() => {});
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -121,6 +128,33 @@ export default function SettingsPage() {
             </button>
           </form>
         )}
+
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h2 className="text-sm font-medium text-gray-700">Cache API</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {cacheCount === null ? "Chargement…" : `${cacheCount} entrée${cacheCount !== 1 ? "s" : ""} en cache · TTL 7 jours`}
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                setClearingCache(true);
+                await fetch("/api/cache", { method: "DELETE" });
+                setCacheCount(0);
+                setClearingCache(false);
+              }}
+              disabled={clearingCache || cacheCount === 0}
+              className="text-sm text-red-500 hover:text-red-700 disabled:opacity-40 transition-colors"
+            >
+              {clearingCache ? "Suppression…" : "Vider le cache"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            Le cache évite de rappeler l&apos;API pour les mêmes domaines/périodes.
+            Vide-le si tu veux forcer un refresh des données.
+          </p>
+        </div>
 
         <p className="text-xs text-gray-400 mt-6 text-center">
           Les credentials sont stockés dans Turso (chiffrement en transit TLS).

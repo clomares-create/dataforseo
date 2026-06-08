@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchDomainTraffic } from '@/lib/dataforseo'
 import { generateMockTrafficData } from '@/lib/mockData'
-import { AnalyticsRequest } from '@/lib/types'
-import { initDB, getDataForSEOCredentials } from '@/lib/turso'
+import { AnalyticsRequest, DomainTrafficSeries } from '@/lib/types'
+import { initDB, getDataForSEOCredentials, getCached, setCached, makeCacheKey } from '@/lib/turso'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +21,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data, isMock: true })
     }
 
-    const data = await fetchDomainTraffic(domains, locationCode, dateFrom, dateTo, creds)
+    // Fetch each domain individually, using cache when available
+    const data = await Promise.all(
+      domains.map(async (domain) => {
+        const cacheKey = makeCacheKey('traffic', { domain, locationCode, dateFrom, dateTo })
+        const cached = await getCached<DomainTrafficSeries>(cacheKey)
+        if (cached) return { ...cached, fromCache: true }
+
+        const [result] = await fetchDomainTraffic([domain], locationCode, dateFrom, dateTo, creds)
+        await setCached(cacheKey, result)
+        return result
+      })
+    )
+
     return NextResponse.json({ success: true, data, isMock: false })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
