@@ -35,24 +35,17 @@ export async function fetchDomainTraffic(
   const tasks = domains.map(domain => ({
     target: domain,
     location_code: locationCode,
+    language_code: 'fr',
     date_from: dateFrom,
     date_to: dateTo,
   }))
 
-  const result = await callApi('/v3/domain_analytics/overview/live', tasks, creds) as {
+  const result = await callApi('/v3/dataforseo_labs/google/domain_rank_overview/live', tasks, creds) as {
     tasks: Array<{
       result: Array<{
-        target: string
-        metrics?: {
-          organic?: {
-            pos_1?: number
-            pos_2_3?: number
-            pos_4_10?: number
-            etv?: number
-          }
-        }
-        metrics_history?: Array<{
+        items?: Array<{
           date: string
+          domain: string
           metrics: {
             organic?: { etv?: number }
           }
@@ -62,17 +55,14 @@ export async function fetchDomainTraffic(
   }
 
   return domains.map((domain, idx) => {
-    const taskResult = result.tasks?.[idx]?.result?.[0]
-    const history = taskResult?.metrics_history ?? []
+    const items = result.tasks?.[idx]?.result?.[0]?.items ?? []
 
-    const data = history.map((h) => ({
-      month: h.date.slice(0, 7), // "YYYY-MM"
-      visits: Math.round(h.metrics?.organic?.etv ?? 0),
-    }))
+    const data = items.map((item) => ({
+      month: item.date.slice(0, 7), // "YYYY-MM"
+      visits: Math.round(item.metrics?.organic?.etv ?? 0),
+    })).sort((a, b) => a.month.localeCompare(b.month))
 
-    const currentTraffic = taskResult?.metrics?.organic?.etv
-      ? Math.round(taskResult.metrics.organic.etv)
-      : (data[data.length - 1]?.visits ?? 0)
+    const currentTraffic = data[data.length - 1]?.visits ?? 0
 
     return {
       domain,
@@ -93,7 +83,7 @@ export async function fetchRankedKeywords(
     target: domain,
     location_code: locationCode,
     language_code: 'fr',
-    limit: 100,
+    limit: 500,
   }))
 
   const result = await callApi('/v3/dataforseo_labs/google/ranked_keywords/live', tasks, creds) as {
