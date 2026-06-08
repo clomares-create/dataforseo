@@ -32,30 +32,24 @@ export async function fetchDomainTraffic(
   creds: Credentials
 ): Promise<DomainTrafficSeries[]> {
   // domain_analytics/overview/live returns monthly organic traffic data
-  const tasks = domains.map(domain => ({
-    target: domain,
-    location_code: locationCode,
-    language_code: 'fr',
-    date_from: dateFrom,
-    date_to: dateTo,
-  }))
-
-  const result = await callApi('/v3/dataforseo_labs/google/historical_rank_overview/live', tasks, creds) as {
+  type HistoricalResult = {
     tasks: Array<{
       result: Array<{
-        items?: Array<{
-          year: number
-          month: number
-          metrics: {
-            organic?: { etv?: number }
-          }
-        }>
+        items?: Array<{ year: number; month: number; metrics: { organic?: { etv?: number } } }>
       }>
     }>
   }
 
+  const results = await Promise.all(
+    domains.map(domain =>
+      callApi('/v3/dataforseo_labs/google/historical_rank_overview/live', [
+        { target: domain, location_code: locationCode, language_code: 'fr', date_from: dateFrom, date_to: dateTo }
+      ], creds) as Promise<HistoricalResult>
+    )
+  )
+
   return domains.map((domain, idx) => {
-    const items = result.tasks?.[idx]?.result?.[0]?.items ?? []
+    const items = results[idx]?.tasks?.[0]?.result?.[0]?.items ?? []
 
     const data = items.map((item) => ({
       month: `${item.year}-${String(item.month).padStart(2, '0')}`,
