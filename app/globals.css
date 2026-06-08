@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #F5F0E8;
+  --dark-green: #1a2e1a;
+  --mid-green: #2d4a2d;
+}
+
+body {
+  background-color: var(--cream);
+}
+
+* {
+  box-sizing: border-box;
+}
