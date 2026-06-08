@@ -44,7 +44,8 @@ export async function fetchDomainTraffic(
     tasks: Array<{
       result: Array<{
         items?: Array<{
-          date: string
+          year: number
+          month: number
           metrics: {
             organic?: { etv?: number }
           }
@@ -57,9 +58,9 @@ export async function fetchDomainTraffic(
     const items = result.tasks?.[idx]?.result?.[0]?.items ?? []
 
     const data = items.map((item) => ({
-      month: (item.date ?? '').slice(0, 7), // "YYYY-MM"
+      month: `${item.year}-${String(item.month).padStart(2, '0')}`,
       visits: Math.round(item.metrics?.organic?.etv ?? 0),
-    })).filter(d => d.month).sort((a, b) => a.month.localeCompare(b.month))
+    })).sort((a, b) => a.month.localeCompare(b.month))
 
     const currentTraffic = data[data.length - 1]?.visits ?? 0
 
